@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>منصة استخراج NDVI من Landsat</title>
+    <title>منصة NDVI - تحميل مباشر</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
     <style>
@@ -100,7 +100,7 @@
             color: white;
         }
         
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 5px 20px rgba(102,126,234,0.4);
         }
@@ -108,7 +108,6 @@
         .btn-primary:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            transform: none;
         }
         
         .btn-secondary {
@@ -119,6 +118,18 @@
         
         .btn-secondary:hover {
             background: #e0e0e0;
+        }
+        
+        .btn-download {
+            background: #28a745;
+            color: white;
+            display: none;
+        }
+        
+        .btn-download:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(40,167,69,0.4);
         }
         
         .map-container {
@@ -212,6 +223,19 @@
             100% { transform: rotate(360deg); }
         }
         
+        .auth-section {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .auth-section.authenticated {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        
         .satellite-info {
             background: #f0f4ff;
             padding: 10px;
@@ -221,8 +245,11 @@
             color: #666;
         }
         
-        .leaflet-draw-toolbar a {
-            background-color: white !important;
+        #previewImage {
+            width: 100%;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
         }
     </style>
 </head>
@@ -230,16 +257,23 @@
     <div class="container">
         <div class="sidebar">
             <h1>🛰️ منصة NDVI</h1>
-            <h2>استخراج مؤشر الغطاء النباتي من Landsat</h2>
+            <h2>استخراج مؤشر الغطاء النباتي - تحميل مباشر</h2>
+            
+            <div class="auth-section" id="authSection">
+                <p style="margin-bottom: 10px; font-size: 13px;">🔐 يجب تسجيل الدخول أولاً</p>
+                <button class="btn btn-primary" id="loginBtn" onclick="authenticateEE()">
+                    تسجيل الدخول بحساب Google
+                </button>
+            </div>
             
             <div class="instructions">
                 <h3>📋 تعليمات الاستخدام</h3>
                 <ol>
-                    <li>حدد تاريخ البداية والنهاية</li>
-                    <li>اختر القمر الصناعي (Landsat 8 أو 9)</li>
+                    <li>سجل الدخول بحساب Google</li>
+                    <li>حدد التواريخ والقمر الصناعي</li>
                     <li>ارسم منطقة الدراسة على الخريطة</li>
-                    <li>انقر "حساب NDVI"</li>
-                    <li>قم بتحميل الصورة بصيغة GeoTIFF</li>
+                    <li>اضغط "حساب وعرض NDVI"</li>
+                    <li>حمّل الملف بصيغة GeoTIFF مباشرة</li>
                 </ol>
             </div>
             
@@ -268,24 +302,31 @@
                 <input type="number" id="cloudCover" value="20" min="0" max="100">
             </div>
             
-            <button class="btn btn-primary" id="calculateBtn" disabled>
-                حساب NDVI
+            <button class="btn btn-primary" id="calculateBtn" disabled onclick="calculateNDVI()">
+                حساب وعرض NDVI
             </button>
             
-            <button class="btn btn-secondary" id="clearBtn">
+            <button class="btn btn-download" id="downloadBtn" onclick="downloadGeoTIFF()">
+                ⬇️ تحميل GeoTIFF
+            </button>
+            
+            <button class="btn btn-secondary" id="clearBtn" onclick="clearDrawing()">
                 مسح الرسم
             </button>
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <p>جاري معالجة البيانات...</p>
+                <p id="loadingText">جاري معالجة البيانات...</p>
             </div>
+            
+            <img id="previewImage" alt="معاينة NDVI">
             
             <div class="satellite-info">
                 <strong>ℹ️ معلومات:</strong><br>
                 • الدقة المكانية: 30 متر<br>
                 • صيغة التحميل: GeoTIFF<br>
-                • NDVI = (NIR - Red) / (NIR + Red)
+                • NDVI = (NIR - Red) / (NIR + Red)<br>
+                • يتم معالجة البيانات مباشرة من Google Earth Engine
             </div>
         </div>
         
@@ -296,91 +337,97 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/earthengine/0.1.374/earthengine-api.min.js"></script>
     
     <script>
-        // Initialize map
-        const map = L.map('map').setView([31.7917, -7.0926], 6);
+        // تكوين OAuth - استبدل بـ Client ID الخاص بك
+        const CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
         
-        // Add base layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 18
-        }).addTo(map);
+        // متغيرات عامة
+        let map, drawnItems, drawControl, currentPolygon, isAuthenticated = false, ndviImage, downloadUrl;
         
-        // Initialize drawing layer
-        const drawnItems = new L.FeatureGroup();
-        map.addLayer(drawnItems);
-        
-        // Drawing controls
-        const drawControl = new L.Control.Draw({
-            position: 'topright',
-            draw: {
-                polygon: {
-                    allowIntersection: false,
-                    showArea: true,
-                    drawError: {
-                        color: '#e74c3c',
-                        message: '<strong>خطأ!</strong> الشكل غير صالح.'
-                    },
-                    shapeOptions: {
-                        color: '#667eea',
-                        weight: 3
-                    }
-                },
-                rectangle: {
-                    shapeOptions: {
-                        color: '#667eea',
-                        weight: 3
-                    }
-                },
-                circle: false,
-                marker: false,
-                circlemarker: false,
-                polyline: false
-            },
-            edit: {
-                featureGroup: drawnItems,
-                remove: true
-            }
-        });
-        map.addControl(drawControl);
-        
-        // Global variables
-        let currentPolygon = null;
-        let ndviImageUrl = null;
-        
-        // Handle drawing created
-        map.on(L.Draw.Event.CREATED, function(e) {
-            drawnItems.clearLayers();
-            const layer = e.layer;
-            drawnItems.addLayer(layer);
-            currentPolygon = layer.toGeoJSON();
+        // تهيئة الخريطة
+        function initMap() {
+            map = L.map('map').setView([31.7917, -7.0926], 6);
             
-            document.getElementById('calculateBtn').disabled = false;
-            showStatus('تم رسم منطقة الدراسة بنجاح', 'success');
-        });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+            
+            drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+            
+            drawControl = new L.Control.Draw({
+                position: 'topright',
+                draw: {
+                    polygon: {
+                        allowIntersection: false,
+                        showArea: true,
+                        shapeOptions: { color: '#667eea', weight: 3 }
+                    },
+                    rectangle: {
+                        shapeOptions: { color: '#667eea', weight: 3 }
+                    },
+                    circle: false,
+                    marker: false,
+                    circlemarker: false,
+                    polyline: false
+                },
+                edit: {
+                    featureGroup: drawnItems,
+                    remove: true
+                }
+            });
+            map.addControl(drawControl);
+            
+            map.on(L.Draw.Event.CREATED, function(e) {
+                drawnItems.clearLayers();
+                const layer = e.layer;
+                drawnItems.addLayer(layer);
+                currentPolygon = layer.toGeoJSON();
+                
+                if (isAuthenticated) {
+                    document.getElementById('calculateBtn').disabled = false;
+                }
+                showStatus('تم رسم منطقة الدراسة بنجاح', 'success');
+            });
+            
+            map.on(L.Draw.Event.DELETED, function() {
+                currentPolygon = null;
+                document.getElementById('calculateBtn').disabled = true;
+                document.getElementById('downloadBtn').style.display = 'none';
+                showStatus('تم مسح منطقة الدراسة', 'warning');
+            });
+        }
         
-        // Handle drawing deleted
-        map.on(L.Draw.Event.DELETED, function() {
-            currentPolygon = null;
-            document.getElementById('calculateBtn').disabled = true;
-            showStatus('تم مسح منطقة الدراسة', 'warning');
-        });
+        // تسجيل الدخول لـ Earth Engine
+        function authenticateEE() {
+            showStatus('جاري فتح نافذة تسجيل الدخول...', 'info');
+            
+            ee.data.authenticateViaPopup(function() {
+                ee.initialize(null, null, function() {
+                    isAuthenticated = true;
+                    document.getElementById('authSection').className = 'auth-section authenticated';
+                    document.getElementById('authSection').innerHTML = '<p style="color: #28a745; font-weight: 600;">✓ تم تسجيل الدخول بنجاح</p>';
+                    
+                    if (currentPolygon) {
+                        document.getElementById('calculateBtn').disabled = false;
+                    }
+                    
+                    showStatus('تم تسجيل الدخول! يمكنك الآن استخدام المنصة', 'success');
+                }, function(error) {
+                    showStatus('خطأ في تهيئة Earth Engine: ' + error, 'error');
+                });
+            });
+        }
         
-        // Clear button handler
-        document.getElementById('clearBtn').addEventListener('click', function() {
-            drawnItems.clearLayers();
-            currentPolygon = null;
-            document.getElementById('calculateBtn').disabled = true;
-            showStatus('تم مسح جميع الرسومات', 'info');
-        });
-        
-        // Calculate NDVI button handler
-        document.getElementById('calculateBtn').addEventListener('click', async function() {
+        // حساب NDVI
+        function calculateNDVI() {
             const startDate = document.getElementById('startDate').value;
             const endDate = document.getElementById('endDate').value;
             const satellite = document.getElementById('satellite').value;
-            const cloudCover = document.getElementById('cloudCover').value;
+            const cloudCover = parseInt(document.getElementById('cloudCover').value);
             
             if (!startDate || !endDate) {
                 showStatus('الرجاء إدخال التواريخ', 'error');
@@ -388,170 +435,109 @@
             }
             
             if (!currentPolygon) {
-                showStatus('الرجاء رسم منطقة الدراسة أولاً', 'error');
+                showStatus('الرجاء رسم منطقة الدراسة', 'error');
                 return;
             }
             
-            // Show loading
             document.getElementById('loading').style.display = 'block';
-            showStatus('جاري الاتصال بخوادم Google Earth Engine...', 'info');
+            document.getElementById('loadingText').textContent = 'جاري حساب NDVI...';
+            document.getElementById('downloadBtn').style.display = 'none';
+            document.getElementById('previewImage').style.display = 'none';
             
-            // Prepare Google Earth Engine code
-            const geeCode = generateGEECode(startDate, endDate, satellite, cloudCover, currentPolygon);
-            
-            // Display code for user to run in GEE
-            displayGEEInstructions(geeCode);
-        });
-        
-        // Generate Google Earth Engine code
-        function generateGEECode(startDate, endDate, satellite, cloudCover, polygon) {
-            const coordinates = polygon.geometry.coordinates[0];
-            const coordsString = coordinates.map(coord => `[${coord[0]}, ${coord[1]}]`).join(',\n        ');
-            
-            return `// كود استخراج NDVI من Landsat
-// تم إنشاؤه تلقائياً من منصة NDVI
-
-// تعريف منطقة الدراسة
-var geometry = ee.Geometry.Polygon([
-    [
-        ${coordsString}
-    ]
-]);
-
-// إضافة منطقة الدراسة للخريطة
-Map.centerObject(geometry, 10);
-Map.addLayer(geometry, {color: 'red'}, 'منطقة الدراسة');
-
-// تحميل صور Landsat
-var collection = ee.ImageCollection('${satellite}')
-    .filterBounds(geometry)
-    .filterDate('${startDate}', '${endDate}')
-    .filter(ee.Filter.lt('CLOUD_COVER', ${cloudCover}));
-
-print('عدد الصور المتاحة:', collection.size());
-
-// دالة لحساب NDVI لـ Landsat 8/9
-function calculateNDVI(image) {
-    var nir = image.select('SR_B5'); // Near-Infrared
-    var red = image.select('SR_B4'); // Red
-    
-    var ndvi = nir.subtract(red)
-        .divide(nir.add(red))
-        .rename('NDVI');
-    
-    return image.addBands(ndvi);
-}
-
-// حساب NDVI لجميع الصور
-var ndviCollection = collection.map(calculateNDVI);
-
-// أخذ متوسط NDVI للفترة المحددة
-var ndviMean = ndviCollection.select('NDVI').median().clip(geometry);
-
-// عرض NDVI على الخريطة
-var ndviVis = {
-    min: -1,
-    max: 1,
-    palette: ['red', 'yellow', 'green']
-};
-
-Map.addLayer(ndviMean, ndviVis, 'NDVI');
-
-// تصدير الصورة بصيغة GeoTIFF
-Export.image.toDrive({
-    image: ndviMean,
-    description: 'NDVI_Export_${startDate}_to_${endDate}',
-    folder: 'NDVI_Results',
-    fileNamePrefix: 'NDVI_${startDate}',
-    region: geometry,
-    scale: 30,
-    crs: 'EPSG:4326',
-    fileFormat: 'GeoTIFF',
-    maxPixels: 1e13
-});
-
-print('تم إعداد التصدير. اذهب إلى تبويب Tasks وانقر على RUN');`;
-        }
-        
-        // Display GEE instructions
-        function displayGEEInstructions(code) {
-            document.getElementById('loading').style.display = 'none';
-            
-            // Create modal with code
-            const modal = document.createElement('div');
-            modal.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.8);
-                z-index: 10000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                padding: 20px;
-            `;
-            
-            modal.innerHTML = `
-                <div style="background: white; border-radius: 15px; padding: 30px; max-width: 800px; max-height: 90vh; overflow-y: auto; direction: rtl;">
-                    <h2 style="color: #667eea; margin-bottom: 20px;">📝 كود Google Earth Engine</h2>
+            try {
+                // تحويل الـ polygon لصيغة EE
+                const coords = currentPolygon.geometry.coordinates[0];
+                const eeCoords = coords.map(coord => [coord[0], coord[1]]);
+                const geometry = ee.Geometry.Polygon([eeCoords]);
+                
+                // تحميل صور Landsat
+                let collection = ee.ImageCollection(satellite)
+                    .filterBounds(geometry)
+                    .filterDate(startDate, endDate)
+                    .filter(ee.Filter.lt('CLOUD_COVER', cloudCover));
+                
+                // حساب NDVI
+                function addNDVI(image) {
+                    const nir = image.select('SR_B5');
+                    const red = image.select('SR_B4');
+                    const ndvi = nir.subtract(red).divide(nir.add(red)).rename('NDVI');
+                    return image.addBands(ndvi);
+                }
+                
+                const ndviCollection = collection.map(addNDVI);
+                ndviImage = ndviCollection.select('NDVI').median().clip(geometry);
+                
+                // معاينة NDVI على الخريطة
+                const visParams = {
+                    min: -1,
+                    max: 1,
+                    palette: ['red', 'yellow', 'green']
+                };
+                
+                ndviImage.getMap(visParams, function(mapid) {
+                    // إضافة طبقة NDVI على الخريطة
+                    if (window.ndviLayer) {
+                        map.removeLayer(window.ndviLayer);
+                    }
                     
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                        <h3 style="color: #764ba2; font-size: 16px; margin-bottom: 10px;">خطوات التنفيذ:</h3>
-                        <ol style="margin-right: 20px; line-height: 1.8;">
-                            <li>افتح <a href="https://code.earthengine.google.com" target="_blank" style="color: #667eea;">Google Earth Engine Code Editor</a></li>
-                            <li>انسخ الكود أدناه</li>
-                            <li>الصقه في محرر الأكواد</li>
-                            <li>انقر على "Run"</li>
-                            <li>انتظر ظهور النتائج على الخريطة</li>
-                            <li>اذهب إلى تبويب "Tasks" في الأعلى</li>
-                            <li>انقر على "RUN" لتصدير الصورة بصيغة GeoTIFF</li>
-                            <li>ستجد الملف في Google Drive في مجلد "NDVI_Results"</li>
-                        </ol>
-                    </div>
+                    window.ndviLayer = L.tileLayer(mapid.urlFormat).addTo(map);
+                    map.fitBounds([
+                        [geometry.bounds().getInfo().coordinates[0][0][1], geometry.bounds().getInfo().coordinates[0][0][0]],
+                        [geometry.bounds().getInfo().coordinates[0][2][1], geometry.bounds().getInfo().coordinates[0][2][0]]
+                    ]);
                     
-                    <div style="position: relative; margin-bottom: 20px;">
-                        <pre style="background: #2d2d2d; color: #f8f8f2; padding: 20px; border-radius: 8px; overflow-x: auto; direction: ltr; text-align: left; font-size: 13px; line-height: 1.5;">${escapeHtml(code)}</pre>
-                        <button onclick="copyCode()" style="position: absolute; top: 10px; right: 10px; background: #667eea; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-size: 12px;">نسخ الكود</button>
-                    </div>
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('downloadBtn').style.display = 'block';
+                    showStatus('تم حساب NDVI بنجاح! يمكنك الآن تحميل الملف', 'success');
                     
-                    <button onclick="closeModal()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600;">إغلاق</button>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            // Store code for copying
-            window.currentGEECode = code;
-            
-            // Close modal function
-            window.closeModal = function() {
-                document.body.removeChild(modal);
-                showStatus('تم نسخ الكود بنجاح. افتح Google Earth Engine لتنفيذه', 'success');
-            };
-            
-            // Copy code function
-            window.copyCode = function() {
-                navigator.clipboard.writeText(window.currentGEECode).then(function() {
-                    showStatus('تم نسخ الكود إلى الحافظة', 'success');
+                    // الحصول على رابط التحميل
+                    downloadUrl = ndviImage.getDownloadURL({
+                        name: 'NDVI_' + startDate + '_to_' + endDate,
+                        scale: 30,
+                        crs: 'EPSG:4326',
+                        fileFormat: 'GeoTIFF',
+                        region: geometry
+                    });
+                    
+                }, function(error) {
+                    document.getElementById('loading').style.display = 'none';
+                    showStatus('خطأ في عرض NDVI: ' + error, 'error');
                 });
-            };
+                
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                showStatus('خطأ: ' + error.message, 'error');
+            }
         }
         
-        // Escape HTML for display
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, m => map[m]);
+        // تحميل GeoTIFF
+        function downloadGeoTIFF() {
+            if (!downloadUrl) {
+                showStatus('الرجاء حساب NDVI أولاً', 'error');
+                return;
+            }
+            
+            showStatus('جاري تجهيز الملف للتحميل...', 'info');
+            window.open(downloadUrl, '_blank');
+            showStatus('تم فتح رابط التحميل في نافذة جديدة', 'success');
         }
         
-        // Show status message
+        // مسح الرسم
+        function clearDrawing() {
+            drawnItems.clearLayers();
+            currentPolygon = null;
+            document.getElementById('calculateBtn').disabled = true;
+            document.getElementById('downloadBtn').style.display = 'none';
+            document.getElementById('previewImage').style.display = 'none';
+            
+            if (window.ndviLayer) {
+                map.removeLayer(window.ndviLayer);
+            }
+            
+            showStatus('تم مسح جميع الرسومات', 'info');
+        }
+        
+        // عرض رسالة الحالة
         function showStatus(message, type) {
             const statusDiv = document.getElementById('status');
             statusDiv.textContent = message;
@@ -563,12 +549,21 @@ print('تم إعداد التصدير. اذهب إلى تبويب Tasks وانق
             }, 5000);
         }
         
-        // Set default dates (last 3 months)
-        const today = new Date();
-        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+        // تعيين تواريخ افتراضية
+        function setDefaultDates() {
+            const today = new Date();
+            const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+            
+            document.getElementById('endDate').valueAsDate = today;
+            document.getElementById('startDate').valueAsDate = threeMonthsAgo;
+        }
         
-        document.getElementById('endDate').valueAsDate = today;
-        document.getElementById('startDate').valueAsDate = threeMonthsAgo;
+        // تهيئة التطبيق
+        window.onload = function() {
+            initMap();
+            setDefaultDates();
+        };
     </script>
 </body>
 </html>
+
