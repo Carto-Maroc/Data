@@ -19,7 +19,7 @@
       font-family: Arial, sans-serif;
     }
 
-    /* الحاوية الرئيسية: تأخذ ارتفاع الشاشة */
+    /* الحاوية الرئيسية */
     #app {
       height: 100vh;
       display: flex;
@@ -169,28 +169,34 @@
       transform: translateY(-1px);
     }
 
-    /* المفتاح في الأسفل: ثابت دائماً */
+    /* 🔥 المفتاح: مستطيل في أعلى اليمين */
     #legend {
-      flex-shrink: 0;
-      background: white;
-      padding: 8px 10px;
-      box-shadow: 0 -2px 6px rgba(0,0,0,0.2);
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-      font-size: clamp(10px, 2vw, 13px);
-      z-index: 3000;
+      position: absolute;
+      top: 400px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+      z-index: 2000;
+      font-size: clamp(10px, 2.2vw, 13px);
+      min-width: 120px;
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .legend-item:last-child {
+      margin-bottom: 0;
     }
 
     .legend-color {
-      width: 14px;
-      height: 14px;
+      width: 16px;
+      height: 16px;
       border: 1px solid #000;
       flex-shrink: 0;
     }
@@ -207,8 +213,9 @@
       }
 
       #legend {
-        padding: 6px 8px;
-        gap: 10px;
+        top: 55px;
+        right: 5px;
+        padding: 8px;
       }
     }
   </style>
@@ -236,23 +243,24 @@
         <input id="searchBox" type="text" placeholder="🔍 Rechercher...">
         <button id="searchBtn" onclick="searchProvince()">Rechercher</button>
       </div>
-    </main>
 
-    <!-- المفتاح الثابت في الأسفل -->
-    <footer id="legend">
-      <div class="legend-item">
-        <div class="legend-color" style="background:rgba(76, 175, 80, 0.7);"></div>
-        <span>Gratuit</span>
+      <!-- 🔥 المفتاح في أعلى اليمين -->
+      <div id="legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background:rgba(76, 175, 80, 0.7);"></div>
+          <span>Gratuit</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:rgba(244, 67, 54, 0.7);"></div>
+          <span>Payant 100dh</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background:rgba(162, 112, 163, 0.3);"></div>
+          <span>Pas encore 100dh</span>
+        </div>
+         <span>Email: contact@cartomaroc.com</span>
       </div>
-      <div class="legend-item">
-        <div class="legend-color" style="background:rgba(244, 67, 54, 0.7);"></div>
-        <span>Payant 100dh</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color" style="background:rgba(162, 112, 163, 0.3);"></div>
-        <span>Pas encore 100dh(demander)  -  Email: contact@cartomaroc.com</span>
-      </div>
-    </footer>
+    </main>
   </div>
 
   <script>
@@ -289,9 +297,9 @@
       style: function(feature) {
         const name = getProvinceName(feature);
 
-        let fillColor = "rgba(162, 112, 163, 0.3)"; // غير جاهز
-        if (freeProvinces.includes(name)) fillColor = "rgba(76, 175, 80, 0.7)"; // مجاني
-        else if (paidProvinces.includes(name)) fillColor = "rgba(244, 67, 54, 0.7)"; // مدفوع
+        let fillColor = "rgba(162, 112, 163, 0.3)";
+        if (freeProvinces.includes(name)) fillColor = "rgba(76, 175, 80, 0.7)";
+        else if (paidProvinces.includes(name)) fillColor = "rgba(244, 67, 54, 0.7)";
 
         return new ol.style.Style({
           stroke: new ol.style.Stroke({ color: "black", width: 1.3 }),
@@ -345,14 +353,11 @@
       let html = `<b>${name}</b><br>`;
 
       if (downloadLinks[name] && paidProvinces.includes(name)) {
-        // للأقاليم المدفوعة
         html += `<a href="${downloadLinks[name]}" target="_blank">📥 Télécharger</a>`;
       } else if (freeProvinces.includes(name)) {
-        // للأقاليم المجانية
         html += `✅ Données gratuites<br>`;
         html += `<button class="download-btn" onclick="downloadFreeData('${name}')">📥 Télécharger gratuitement</button>`;
       } else {
-        // للأقاليم غير المتوفرة
         html += `⛔ Les données ne sont pas prêtes.<br>`;
         html += `<button class="request-btn" onclick="requestProvince('${name}')">📱 Demander ces données</button>`;
       }
@@ -392,9 +397,3 @@
 
 </body>
 </html>
-
-
-
-
-
-
