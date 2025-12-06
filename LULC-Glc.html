@@ -1,15 +1,23 @@
 <!DOCTYPE html>
-<html lang="en" class=""><head><script>window.livecodes = window.livecodes || {};</script><title>Untitled Project</title><meta name="title" content="Untitled Project"><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0"><style id="__livecodes_styles__"></style><script src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js" async=""></script><script type="importmap">{
-  "imports": {}
-}</script></head><body><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
+<html lang="en" class="">
+<head>
+<title>CartoMaroc Provinces</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.4.0/ol.css">
 <script src="https://cdn.jsdelivr.net/npm/ol@v7.4.0/dist/ol.js"></script>
 
 <style>
+  * {
+    box-sizing: border-box;
+  }
+  
   body {
     margin: 0;
     padding: 0;
     font-family: Arial, sans-serif;
+    overflow-x: hidden;
   }
 
   #mapContainer {
@@ -19,13 +27,13 @@
     margin: 0 auto;
   }
 
-  /* العنوان الرئيسي */
+  /* العنوان */
   #mapTitle {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     text-align: center;
-    padding: 20px;
-    font-size: 24px;
+    padding: 15px 10px;
+    font-size: clamp(16px, 4vw, 24px);
     font-weight: bold;
     border-radius: 10px 10px 0 0;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -33,43 +41,65 @@
 
   #map {
     width: 100%;
-    height: 600px;
+    height: 70vh;
+    max-height: 600px;
+    min-height: 400px;
     position: relative;
     z-index: 1;
   }
 
-  /* السعر وزر الواتساب في الأسفل */
+  /* 🔥 علامة مائية في وسط الخريطة */
+  #watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(18px, 5vw, 32px);
+    font-weight: bold;
+    color: rgba(102, 126, 234, 0.15);
+    pointer-events: none;
+    z-index: 1500;
+    white-space: nowrap;
+    text-shadow: 2px 2px 4px rgba(255,255,255,0.3);
+  }
+
+  /* السعر وزر الواتساب */
   #bottomInfo {
     background: white;
-    padding: 20px;
+    padding: 15px 10px;
     border-radius: 0 0 10px 10px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 15px;
+    gap: 10px;
   }
 
   #priceInfo {
-    font-size: 18px;
+    font-size: clamp(14px, 3vw, 18px);
     font-weight: bold;
     color: #2196F3;
+    flex: 1 1 100%;
+    text-align: center;
   }
 
   #whatsappSection {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
   }
 
   #provinceInput {
     padding: 10px 15px;
     border: 2px solid #25D366;
     border-radius: 25px;
-    font-size: 14px;
-    width: 200px;
+    font-size: clamp(12px, 2.5vw, 14px);
+    flex: 1 1 200px;
+    max-width: 250px;
     outline: none;
   }
 
@@ -81,196 +111,281 @@
   #whatsappBtn {
     background: #25D366;
     color: white;
-    padding: 12px 24px;
+    padding: 10px 20px;
     border: none;
     border-radius: 25px;
-    font-size: 16px;
+    font-size: clamp(12px, 2.5vw, 16px);
     font-weight: bold;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     text-decoration: none;
     transition: background 0.3s;
+    white-space: nowrap;
   }
 
   #whatsappBtn:hover {
     background: #128C7E;
   }
 
-  .whatsapp-icon {
-    font-size: 24px;
-  }
-
+  /* Popup احترافي */
   .ol-popup {
-    background: white;
-    padding: 8px;
-    border: 1px solid #ccc;
+    background: linear-gradient(135deg, #ffffff 0%, #f5f7fb 100%);
+    padding: 14px 16px;
+    border: 1px solid #e0e4ef;
     min-width: 200px;
+    max-width: 90vw;
     z-index: 9999;
     font-size: 13px;
-    border-radius: 5px;
+    border-radius: 10px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.18);
+    color: #1f2933;
   }
-  .ol-popup:after, .ol-popup:before {
-    top: 100%;
-    border: solid transparent;
-    content: " ";
-    height: 0;
-    width: 0;
-    position: absolute;
-    pointer-events: none;
+  
+  .ol-popup b {
+    font-size: 14px;
+    color: #111827;
   }
-  .ol-popup:after {
-    border-top-color: white;
-    border-width: 10px;
-    left: 50%;
-    margin-left: -10px;
+  
+  .ol-popup a, .ol-popup button {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 12px;
+    cursor: pointer;
+    margin-right: 5px;
   }
-  .ol-popup:before {
-    border-top-color: #ccc;
-    border-width: 11px;
-    left: 50%;
-    margin-left: -11px;
+  
+  .ol-popup a:hover, .ol-popup button:hover {
+    background: #1d4ed8;
+  }
+  
+  .ol-popup .request-btn {
+    background: #25D366;
+  }
+  
+  .ol-popup .request-btn:hover {
+    background: #128C7E;
+  }
+  
+  .ol-popup .download-btn {
+    background: #4CAF50;
+  }
+  
+  .ol-popup .download-btn:hover {
+    background: #388E3C;
   }
 
+  /* مربع البحث */
   #searchContainer {
     position: absolute;
-    top: 80px;
+    top: 70px;
     right: 10px;
-    background: white;
-    padding: 6px;
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.96);
+    padding: 6px 8px;
+    border-radius: 999px;
     z-index: 2000;
     display: flex;
+    align-items: center;
     gap: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.18);
+    border: 1px solid rgba(148, 163, 184, 0.5);
   }
-  
+
   #searchBox {
-    padding: 6px 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 13px;
-    width: 150px;
-  }
-  
-  #searchBtn {
     padding: 6px 12px;
     border: none;
-    background: #2196F3;
-    color: white;
-    border-radius: 4px;
-    font-size: 13px;
-    cursor: pointer;
-    font-weight: bold;
+    outline: none;
+    border-radius: 999px;
+    font-size: clamp(11px, 2.5vw, 13px);
+    width: clamp(100px, 30vw, 160px);
+    background: #f3f4f6;
+    color: #111827;
+  }
+  
+  #searchBox::placeholder {
+    color: #9ca3af;
   }
 
-  #mostRequested {
+  #searchBtn {
+    padding: 6px 10px;
+    border: none;
+    background: #2563eb;
+    color: white;
+    border-radius: 999px;
+    font-size: clamp(10px, 2vw, 12px);
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s, transform 0.1s;
+  }
+  
+  #searchBtn:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+  }
+
+  /* 🔥 LEGEND */
+  #legendBox {
     position: absolute;
     bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 8px;
     background: white;
-    color: red;
-    font-weight: bold;
-    padding: 6px 10px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    z-index: 2000;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: clamp(10px, 2vw, 13px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    z-index: 3000;
+    width: clamp(130px, 35vw, 160px);
   }
 
-  .ol-attribution {
-    left: 10px !important;
-    right: auto !important;
+  .legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
   }
 
-  @media (max-width: 600px) {
+  .legend-color {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #000;
+    margin-right: 6px;
+    flex-shrink: 0;
+  }
+  
+  /* Media queries للهاتف */
+  @media (max-width: 768px) {
     #mapTitle {
-      font-size: 18px;
-      padding: 15px;
+      padding: 12px 8px;
     }
+    
+    #map {
+      height: 60vh;
+      min-height: 350px;
+    }
+    
+    #searchContainer {
+      top: 60px;
+      right: 5px;
+    }
+    
     #bottomInfo {
-      flex-direction: column;
-      text-align: center;
+      padding: 12px 8px;
+    }
+    
+    #priceInfo {
+      margin-bottom: 5px;
+    }
+    
+    #legendBox {
+      bottom: 8px;
+      right: 5px;
+      padding: 6px;
     }
   }
 </style>
+</head>
+
+<body>
 
 <div id="mapContainer">
-  <div id="mapTitle">
-    Télécharger LULC GLC 30m (1985-2000-2010-2022)
+  <div id="mapTitle">Télécharger LULC GLC 30m (1985-2000-2010-2022)</div>
+
+  <div id="map">
+    <!-- 🔥 علامة مائية -->
+    <div id="watermark">@CartoMaroc</div>
   </div>
   
-  <div id="map"></div>
   <div id="popup" class="ol-popup"></div>
 
+  <!-- مربع البحث -->
   <div id="searchContainer">
     <input id="searchBox" type="text" placeholder="🔍 Rechercher...">
     <button id="searchBtn" onclick="searchProvince()">Rechercher</button>
   </div>
 
-  <div id="mostRequested">@CartoMaroc</div>
-
-  <div id="bottomInfo">
-    <div id="priceInfo">
-      💰 Prix du service : 100 DH pour quatre années
+  <!-- 🔥 LEGEND -->
+  <div id="legendBox">
+    <div class="legend-item">
+      <div class="legend-color" style="background:#4CAF50;"></div> Gratuit
     </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background:#F44336;"></div> Payant
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background:#BDBDBD;"></div> Pas encore
+    </div>
+  </div>
+
+  <!-- أسفل الخريطة -->
+  <div id="bottomInfo">
+    <div id="priceInfo">💰 Prix du service : 100 DH pour quatre années</div>
+
     <div id="whatsappSection">
       <input type="text" id="provinceInput" placeholder="Nom de la province...">
-      <button id="whatsappBtn" onclick="sendWhatsApp()">
-        <span class="whatsapp-icon">📱</span>
-        envoyer
-      </button>
+      <button id="whatsappBtn" onclick="sendWhatsApp()">📱 envoyer</button>
     </div>
   </div>
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener("DOMContentLoaded", function() {
+
+  /* 🔥 لوائح الأقاليم */
+  const freeProvinces = ["Taza", "Azilal", "Safi"];  
+  const paidProvinces = ["Marrakech", "Tanger-Asilah", "Skhirate-Temara"];
+
+  const downloadLinks = {
+    "Taza": "https://drive.google.com/file/d/1DBtwIGzWY2sPVm2ZAli-kBWerNMstOPw/view",
+    "Azilal": "https://drive.google.com/file/d/1EXAMPLE_AZILAL/view",
+    "Safi": "https://drive.google.com/file/d/1EXAMPLE_SAFI/view",
+    "Marrakech": "https://drive.google.com/file/d/1DBtwIGzWY2sPVm2ZAli-kBWerNMstOPw/view",
+    "Tanger-Asilah": "https://drive.google.com/file/d/1lnBOG5wqUAeG1EfuQNlenp6jHK1Pe4g_/view",
+    "Skhirate-Temara": "https://drive.google.com/file/d/1Km67Ez0yEoy2zg1GKXGrjRmyRdoMKaZM/view",
+  };
+
   const geojsonSource = new ol.source.Vector({
-    url: 'https://raw.githubusercontent.com/Ayoub-WebGis9/CartoMaroc/main/PROVINCE.geojson',
+    url: "https://raw.githubusercontent.com/Ayoub-WebGis9/CartoMaroc/main/PROVINCE.geojson",
     format: new ol.format.GeoJSON()
   });
 
   function getProvinceName(feature) {
     const props = feature.getProperties();
-    const possibleFields = ["NOM-PROV", "NOM_PROV", "name", "NAME", "nom", "Nom", "الاقليم", "الإقليم"];
-    for (const f of possibleFields) {
-      if (props[f] && props[f].toString().trim() !== "") return props[f];
-    }
+    const possible = ["NOM-PROV","NOM_PROV","name","NAME","nom","Nom","الاقليم","الإقليم"];
+    for (let f of possible) if (props[f]) return props[f];
     return "Sans nom";
   }
 
-  const downloadLinks = {
-    "Marrakech": "https://drive.google.com/file/d/1DBtwIGzWY2sPVm2ZAli-kBWerNMstOPw/view?usp=drive_link",
-
-    "Tanger-Asilah": "https://drive.google.com/file/d/1lnBOG5wqUAeG1EfuQNlenp6jHK1Pe4g_/view?usp=drive_link",
-    "Skhirate-Temara": "https://drive.google.com/file/d/1Km67Ez0yEoy2zg1GKXGrjRmyRdoMKaZM/view?usp=drive_link",
-  };
-
+  /* 🔥 تلوين الأقاليم */
   const geojsonLayer = new ol.layer.Vector({
-    source: geojsonSource,
-    style: function(feature) {
-      const name = getProvinceName(feature);
-      const isReady = downloadLinks[name] ? true : false;
+  source: geojsonSource,
+  style: function(feature) {
+    const name = getProvinceName(feature);
+
+    let fillColor = "rgba(162, 112, 163, 0.3"; // غير جاهز - شفاف
+    if (freeProvinces.includes(name)) fillColor = "rgba(76, 175, 80, 0.7)"; // مجاني - شفاف
+    else if (paidProvinces.includes(name)) fillColor = "rgba(244, 67, 54, 0.7)"; // مدفوع - شفاف
+
       return new ol.style.Style({
-        stroke: new ol.style.Stroke({ color: 'black', width: 1.5 }),
-        fill: new ol.style.Fill({
-          color: isReady ? 'rgba(244,67,54,0.7)' : 'rgba(225,208,219,0.7)'
-        }),
+        stroke: new ol.style.Stroke({ color: "black", width: 1.3 }),
+        fill: new ol.style.Fill({ color: fillColor }),
         text: new ol.style.Text({
           text: name,
-          font: 'bold 12px Arial',
-          fill: new ol.style.Fill({ color: '#000' }),
-          stroke: new ol.style.Stroke({ color: '#fff', width: 2 }),
-          overflow: true
+          font: "bold 12px Arial",
+          fill: new ol.style.Fill({ color: "#000" }),
+          stroke: new ol.style.Stroke({ color: "#fff", width: 2 })
         })
       });
     }
   });
 
   const map = new ol.Map({
-    target: 'map',
+    target: "map",
     layers: [
       new ol.layer.Tile({ source: new ol.source.OSM() }),
       geojsonLayer
@@ -282,64 +397,88 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   const popup = new ol.Overlay({
-    element: document.getElementById('popup'),
-    positioning: 'bottom-center',
-    stopEvent: false,
+    element: document.getElementById("popup"),
+    positioning: "bottom-center",
     offset: [0, -15]
   });
   map.addOverlay(popup);
 
-  function showPopup(feature, coordinate) {
-    const name = getProvinceName(feature);
-    let content = `<b>${name}</b><br>`;
-    if (downloadLinks[name]) {
-      content += `<a href="${downloadLinks[name]}" target="_blank">📥 Télécharger les données</a>`;
-    } else {
-      content += `⛔ Les données de cette province ne sont pas encore prêtes.<br>
-                  📲 Veuillez envoyer un message WhatsApp pour les préparer`;
+  /* 🔥 دالة إرسال طلب واتساب للإقليم */
+  window.requestProvince = function(provinceName) {
+    const message = `Je veux GLC ${provinceName}`;
+    const whatsappURL = `https://wa.me/212633577988?text=${encodeURIComponent(message)}`;
+    window.open(whatsappURL, "_blank");
+  };
+  
+  /* 🔥 دالة تحميل البيانات المجانية */
+  window.downloadFreeData = function(provinceName) {
+    const link = downloadLinks[provinceName];
+    if (link) {
+      window.open(link, "_blank");
     }
-    document.getElementById('popup').innerHTML = content;
-    popup.setPosition(coordinate);
+  };
+
+  function showPopup(feature, coord) {
+    const name = getProvinceName(feature);
+    let html = `<b>${name}</b><br>`;
+
+    if (downloadLinks[name] && paidProvinces.includes(name)) {
+      // للأقاليم المدفوعة
+      html += `<a href="${downloadLinks[name]}" target="_blank">📥 Télécharger</a>`;
+    } else if (freeProvinces.includes(name)) {
+      // 🔥 للأقاليم المجانية - إضافة زر تحميل
+      html += `✅ Données gratuites<br>`;
+      html += `<button class="download-btn" onclick="downloadFreeData('${name}')">📥 Télécharger gratuitement</button>`;
+    } else {
+      // للأقاليم غير المتوفرة
+      html += `⛔ Les données ne sont pas prêtes.<br>`;
+      html += `<button class="request-btn" onclick="requestProvince('${name}')">📱 Demander ces données</button>`;
+    }
+
+    popup.getElement().innerHTML = html;
+    popup.setPosition(coord);
   }
 
-  map.on('click', function(evt) {
-    const feature = map.forEachFeatureAtPixel(evt.pixel, function(ft) { return ft; });
-    if (feature) {
-      showPopup(feature, evt.coordinate);
-    } else {
-      popup.setPosition(undefined);
-    }
+  map.on("click", (evt) => {
+    const f = map.forEachFeatureAtPixel(evt.pixel, ft => ft);
+    if (f) showPopup(f, evt.coordinate);
+    else popup.setPosition(undefined);
   });
 
+  /* بحث */
   window.searchProvince = function() {
-    const searchText = document.getElementById("searchBox").value.trim().toLowerCase();
-    if (!searchText) return;
+    const s = document.getElementById("searchBox").value.trim().toLowerCase();
+    if (!s) return;
+
     let found = false;
-    geojsonSource.getFeatures().forEach(function(feature) {
-      const name = getProvinceName(feature).toLowerCase();
-      if (name.includes(searchText)) {
-        const extent = feature.getGeometry().getExtent();
-        map.getView().fit(extent, { duration: 1000, padding: [50, 50, 50, 50] });
-        const coords = ol.extent.getCenter(extent);
-        showPopup(feature, coords);
+
+    geojsonSource.getFeatures().forEach(ft => {
+      const name = getProvinceName(ft).toLowerCase();
+      if (name.includes(s)) {
+        const ext = ft.getGeometry().getExtent();
+        map.getView().fit(ext, { duration: 1000, padding: [50,50,50,50] });
+        showPopup(ft, ol.extent.getCenter(ext));
         found = true;
       }
     });
-    if (!found) {
-      alert("⚠️ Cette province n'a pas été trouvée");
-    }
-  }
 
+    if (!found) alert("⚠️ Province introuvable");
+  };
+
+  /* واتساب */
   window.sendWhatsApp = function() {
-    const provinceName = document.getElementById("provinceInput").value.trim();
-    let message = "Bonjour, je suis intéressé par les données LULC";
-    
-    if (provinceName) {
-      message += " pour la province de " + provinceName;
-    }
-    
-    const whatsappURL = "https://wa.me/212633577988?text=" + encodeURIComponent(message);
-    window.open(whatsappURL, '_blank');
-  }
+    const name = document.getElementById("provinceInput").value.trim();
+    let msg = "Bonjour, je suis intéressé par les données LULC";
+    if (name) msg += " pour la province de " + name;
+
+    window.open(
+      "https://wa.me/212633577988?text=" + encodeURIComponent(msg),
+      "_blank"
+    );
+  };
+
 });
-</script><script></script></body></html>
+</script>
+
+</body>
+</html>
