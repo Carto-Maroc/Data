@@ -178,7 +178,7 @@
       padding: 10px;
       border-radius: 8px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.25);
-      z-index: 2000;
+      z-index: 3000;
       font-size: clamp(10px, 2.2vw, 13px);
       min-width: 120px;
     }
@@ -216,6 +216,7 @@
         top: 55px;
         right: 5px;
         padding: 8px;
+        font-size: 10px;
       }
     }
   </style>
@@ -244,7 +245,7 @@
         <button id="searchBtn" onclick="searchProvince()">Rechercher</button>
       </div>
 
-      <!-- 🔥 المفتاح في أعلى اليمين -->
+      <!-- 🔥 المفتاح في أعلى اليمين - الآن خارج #map -->
       <div id="legend">
         <div class="legend-item">
           <div class="legend-color" style="background:rgba(76, 175, 80, 0.7);"></div>
@@ -258,7 +259,9 @@
           <div class="legend-color" style="background:rgba(162, 112, 163, 0.3);"></div>
           <span>Pas encore 100dh</span>
         </div>
-         <span>Email: contact@cartomaroc.com</span>
+        <div style="margin-top: 8px; font-size: 10px;">
+          <span>Email: contact@cartomaroc.com</span>
+        </div>
       </div>
     </main>
   </div>
@@ -397,3 +400,4 @@
 
 </body>
 </html>
+
